@@ -353,9 +353,9 @@ Status PgWrapper::Start() {
   // users change the shared_preload_libraries conf parameter.
   if (FLAGS_pg_stat_statements_enabled) {
     argv.push_back("shared_preload_libraries=pg_stat_statements,yb_pg_metrics,pgaudit,"
-      "pg_hint_plan");
+      "pg_hint_plan,postgres_fdw");
   } else {
-    argv.push_back("shared_preload_libraries=yb_pg_metrics,pgaudit,pg_hint_plan");
+    argv.push_back("shared_preload_libraries=yb_pg_metrics,pgaudit,pg_hint_plan,postgres_fdw");
   }
   argv.push_back("-c");
   argv.push_back("yb_pg_metrics.node_name=" + FLAGS_metric_node_name);
@@ -371,6 +371,7 @@ Status PgWrapper::Start() {
   }
 
   pg_proc_.emplace(postgres_executable, argv);
+  pg_proc_->SetEnv("LD_LIBRARY_PATH", "/home/yb/postgres/lib:/home/yb/lib/yb-thirdparty");
   pg_proc_->ShareParentStderr();
   pg_proc_->ShareParentStdout();
   pg_proc_->SetParentDeathSignal(SIGINT);
