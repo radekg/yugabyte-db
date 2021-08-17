@@ -403,6 +403,11 @@ Status PgWrapper::Start() {
   }
 
   pg_proc_.emplace(postgres_executable, argv);
+  vector<string> ld_library_path {
+    GetPostgresLibPath(),
+    GetPostgresThirdPartyLibPath()
+  };
+  pg_proc_->SetEnv("LD_LIBRARY_PATH", boost::join(ld_library_path, ":"));
   pg_proc_->ShareParentStderr();
   pg_proc_->ShareParentStdout();
   pg_proc_->SetParentDeathSignal(SIGINT);
@@ -499,6 +504,14 @@ Status PgWrapper::InitDbForYSQL(const string& master_addresses, const string& tm
 
 string PgWrapper::GetPostgresExecutablePath() {
   return JoinPathSegments(GetPostgresInstallRoot(), "bin", "postgres");
+}
+
+string PgWrapper::GetPostgresLibPath() {
+  return JoinPathSegments(GetPostgresInstallRoot(), "lib");
+}
+
+string PgWrapper::GetPostgresThirdPartyLibPath() {
+  return JoinPathSegments(GetPostgresInstallRoot(), "..", "lib", "yb-thirdparty");
 }
 
 string PgWrapper::GetInitDbExecutablePath() {
