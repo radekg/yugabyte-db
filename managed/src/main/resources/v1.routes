@@ -198,7 +198,7 @@ DELETE  /customers/:cUUID/universes/:uniUUID/clusters/read_only/:clustUUID      
 # Universe Read and Delete operations stays same as old and moved to become part of the new API
 GET     /customers/:cUUID/universes                                            com.yugabyte.yw.controllers.UniverseController.list(cUUID: java.util.UUID, name: String ?= null)
 GET     /customers/:cUUID/universes/:uniUUID                                   com.yugabyte.yw.controllers.UniverseController.index(cUUID: java.util.UUID, uniUUID: java.util.UUID)
-DELETE  /customers/:cUUID/universes/:uniUUID                                   com.yugabyte.yw.controllers.UniverseController.destroy(cUUID: java.util.UUID, uniUUID: java.util.UUID, isForceDelete:Boolean ?= false, isDeleteBackups:Boolean ?= false)
+DELETE  /customers/:cUUID/universes/:uniUUID                                   com.yugabyte.yw.controllers.UniverseController.destroy(cUUID: java.util.UUID, uniUUID: java.util.UUID, isForceDelete:Boolean ?= false, isDeleteBackups:Boolean ?= false, isDeleteAssociatedCerts:Boolean ?= false)
 
 # Universe Info like status, cost, query stats, health, resource usage
 GET     /customers/:cUUID/universes/:uniUUID/status                            com.yugabyte.yw.controllers.UniverseInfoController.universeStatus(cUUID: java.util.UUID, uniUUID: java.util.UUID)
@@ -333,3 +333,7 @@ PUT    /settings/ha/internal/config/demote/:timestamp                          c
 PUT    /settings/ha/internal/config/sync/:timestamp                            com.yugabyte.yw.controllers.InternalHAController.syncInstances(timestamp: Long)
 POST   /settings/ha/internal/upload                                            com.yugabyte.yw.controllers.InternalHAController.syncBackups()
 
+# Schedule External Script API
+POST   /customers/:cUUID/universes/:uniUUID/scheduleScript                     com.yugabyte.yw.controllers.ScheduleScriptController.externalScriptSchedule(cUUID: java.util.UUID, uniUUID : java.util.UUID)
+PUT    /customers/:cUUID/universes/:uniUUID/stopScheduledScript                com.yugabyte.yw.controllers.ScheduleScriptController.stopScheduledScript(cUUID: java.util.UUID, uniUUID : java.util.UUID)
+PUT    /customers/:cUUID/universes/:uniUUID/updateScheduledScript              com.yugabyte.yw.controllers.ScheduleScriptController.updateScheduledScript(cUUID: java.util.UUID, uniUUID : java.util.UUID)
