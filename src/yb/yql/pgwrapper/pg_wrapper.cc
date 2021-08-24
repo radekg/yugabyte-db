@@ -122,10 +122,29 @@ void ReadCommaSeparatedValues(const string& src, vector<string>* lines) {
 }
 
 void MergeSharedPreloadLibraries(const string& src, vector<string>* defaults) {
-  string copy = boost::erase_first_copy(boost::replace_all_copy(src, " ", ""), "shared_preload_libraries=");
+  string copy = boost::replace_all_copy(src, " ", "");
+  copy = boost::erase_first_copy(copy, "shared_preload_libraries");
+  // According to the documentation in postgresql.conf file,
+  // the '=' is optional hence it needs to be handled separately.
+  copy = boost::erase_first_copy(copy, "=");
   copy = boost::trim_copy_if(copy, boost::is_any_of("'\""));
   vector<string> new_items;
   boost::split(new_items, copy, boost::is_any_of(","));
+  // Remove empty elements, makes it safe to use with empty user
+  // provided shared_preload_libraries, for example,
+  // if the value was provided via environment variable, example:
+  //
+  //   --ysql_pg_conf="shared_preload_libraries='$UNSET_VALUE'"
+  //
+  // Alternative example:
+  //
+  //   --ysql_pg_conf="shared_preload_libraries='$LIB1,$LIB2,$LIB3'"
+  // where any of the libs could be undefined.
+  new_items.erase(
+    std::remove_if(new_items.begin(),
+      new_items.end(),
+      [](const std::string& s){return s.empty();}),
+      new_items.end());
   defaults->insert(defaults->end(), new_items.begin(), new_items.end());
 }
 
@@ -177,6 +196,15 @@ Result<string> WritePostgresConfig(const PgProcessConf& conf) {
         ErrnoToString(errno));
   }
 
+  // Gather the default extensions:
+  vector<string> metricsLibs;
+  if (FLAGS_pg_stat_statements_enabled) {
+    metricsLibs.push_back("pg_stat_statements");
+  }
+  metricsLibs.push_back("yb_pg_metrics");
+  metricsLibs.push_back("pgaudit");
+  metricsLibs.push_back("pg_hint_plan");
+
   vector<string> lines;
   string line;
   while (std::getline(conf_file, line)) {
@@ -184,11 +212,24 @@ Result<string> WritePostgresConfig(const PgProcessConf& conf) {
   }
   conf_file.close();
 
+  vector<string> user_configs;
   if (!FLAGS_ysql_pg_conf_csv.empty()) {
-    RETURN_NOT_OK(ReadCSVValues(FLAGS_ysql_pg_conf_csv, &lines));
+    RETURN_NOT_OK(ReadCSVValues(FLAGS_ysql_pg_conf_csv, &user_configs));
   } else if (!FLAGS_ysql_pg_conf.empty()) {
-    ReadCommaSeparatedValues(FLAGS_ysql_pg_conf, &lines);
+    ReadCommaSeparatedValues(FLAGS_ysql_pg_conf, &user_configs);
   }
+
+  // If the user has given any shared_preload_libraries, merge them in.
+  for (string &value : user_configs) {
+    if (boost::starts_with(value, "shared_preload_libraries")) {
+      MergeSharedPreloadLibraries(value, &metricsLibs);
+    } else {
+      lines.push_back(value);
+    }
+  }
+
+  // Add shared_preload_libraries to the ysql_pg.conf.
+  lines.push_back(Format("shared_preload_libraries='$0'", boost::join(metricsLibs, ",")));
 
   if (conf.enable_tls) {
     lines.push_back("ssl=on");
@@ -356,38 +397,6 @@ Status PgWrapper::Start() {
     argv.push_back("-c");
     argv.push_back("log_directory=" + FLAGS_log_dir);
   }
-
-  argv.push_back("-c");
-
-  // Gather the default extensions:
-  vector<string> metricsLibs;
-  if (FLAGS_pg_stat_statements_enabled) {
-    metricsLibs.push_back("pg_stat_statements");
-    metricsLibs.push_back("yb_pg_metrics");
-    metricsLibs.push_back("pgaudit");
-    metricsLibs.push_back("pg_hint_plan");
-  } else {
-    metricsLibs.push_back("pg_stat_statements");
-    metricsLibs.push_back("pgaudit");
-    metricsLibs.push_back("pg_hint_plan");
-  }
-
-  // Once again parse the pg conf:
-  vector<string> pgConfLines;
-  if (!FLAGS_ysql_pg_conf_csv.empty()) {
-    RETURN_NOT_OK(ReadCSVValues(FLAGS_ysql_pg_conf_csv, &pgConfLines));
-  } else if (!FLAGS_ysql_pg_conf.empty()) {
-    ReadCommaSeparatedValues(FLAGS_ysql_pg_conf, &pgConfLines);
-  }
-  
-  // If the user has given any shared_preload_libraries -> merge them in
-  for ( string &value : pgConfLines ) {
-    if (boost::starts_with(value, "shared_preload_libraries")) {
-      MergeSharedPreloadLibraries(value, &metricsLibs);
-    }
-  }
-
-  argv.push_back(string("shared_preload_libraries=").append(boost::join(metricsLibs, ",")));
 
   argv.push_back("-c");
   argv.push_back("yb_pg_metrics.node_name=" + FLAGS_metric_node_name);
