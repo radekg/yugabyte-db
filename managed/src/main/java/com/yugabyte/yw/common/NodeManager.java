@@ -53,6 +53,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import play.libs.Json;
@@ -103,6 +104,8 @@ public class NodeManager extends DevopsBase {
   @Inject play.Configuration appConfig;
 
   @Inject RuntimeConfigFactory runtimeConfigFactory;
+
+  @Inject ConfigHelper configHelper;
 
   private UserIntent getUserIntentFromParams(NodeTaskParams nodeTaskParam) {
     Universe universe = Universe.getOrBadRequest(nodeTaskParam.universeUUID);
@@ -487,6 +490,11 @@ public class NodeManager extends DevopsBase {
           subcommand.add(releaseMetadata.s3.accessKeyId);
           subcommand.add("--aws_secret_key");
           subcommand.add(releaseMetadata.s3.secretAccessKey);
+        } else if (releaseMetadata.gcs != null) {
+          subcommand.add("--gcs_remote_download");
+          ybServerPackage = releaseMetadata.gcs.paths.x86_64;
+          subcommand.add("--gcs_credentials_json");
+          subcommand.add(releaseMetadata.gcs.credentialsJson);
         } else if (releaseMetadata.http != null) {
           subcommand.add("--http_remote_download");
           ybServerPackage = releaseMetadata.http.paths.x86_64;
@@ -986,6 +994,15 @@ public class NodeManager extends DevopsBase {
             Map<String, String> useTags = userIntent.getInstanceTagsForInstanceOps();
             commandArgs.add("--instance_tags");
             commandArgs.add(Json.stringify(Json.toJson(useTags)));
+          }
+
+          // right now we only need explicit python installation for CentOS 8 graviton instances
+          if (taskParam.instanceType != null
+              && configHelper
+                  .getGravitonInstancePrefixList()
+                  .stream()
+                  .anyMatch(taskParam.instanceType::startsWith)) {
+            commandArgs.add("--install_python");
           }
 
           commandArgs.addAll(getAccessKeySpecificCommand(taskParam, type));

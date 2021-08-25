@@ -313,6 +313,9 @@ class CreateInstancesMethod(AbstractInstancesMethod):
         self.parser.add_argument("--boot_script", required=False,
                                  help="Custom boot script to execute on the instance.")
 
+        self.parser.add_argument("--install_python", action="store_true", default=False,
+                                 help="Flag to set if host OS needs python installed for Ansible.")
+
     def callback(self, args):
         host_info = self.cloud.get_host_info(args)
         if host_info:
@@ -352,6 +355,8 @@ class CreateInstancesMethod(AbstractInstancesMethod):
             self.update_ansible_vars(args)
             host_info = self.wait_for_host(args)
             ansible = self.cloud.setup_ansible(args)
+            if (args.install_python):
+                self.extra_vars["install_python"] = True
             ansible.run("preprovision.yml", self.extra_vars, host_info)
 
             if not args.disable_custom_ssh:
@@ -668,6 +673,8 @@ class ConfigureInstancesMethod(AbstractInstancesMethod):
         self.parser.add_argument('--s3_remote_download', action="store_true")
         self.parser.add_argument('--aws_access_key')
         self.parser.add_argument('--aws_secret_key')
+        self.parser.add_argument('--gcs_remote_download', action="store_true")
+        self.parser.add_argument('--gcs_credentials_json')
         self.parser.add_argument('--http_remote_download', action="store_true")
         self.parser.add_argument('--http_package_checksum', default='')
 
@@ -782,6 +789,26 @@ class ConfigureInstancesMethod(AbstractInstancesMethod):
                     self.extra_vars['s3_package_path'] = args.package
                     self.extra_vars['aws_access_key'] = aws_access_key
                     self.extra_vars['aws_secret_key'] = aws_secret_key
+                    logging.info(
+                        "Variables to download {} directly on the remote host added."
+                        .format(args.package))
+                if args.gcs_remote_download:
+                    gcs_credentials_json = args.gcs_credentials_json or \
+                                           os.getenv('GCS_CREDENTIALS_JSON')
+
+                    if gcs_credentials_json is None:
+                        raise YBOpsRuntimeError("GCS credentials are not specified, nor found in " +
+                                                "the environment to download YB package from {}"
+                                                .format(args.package))
+
+                    gcs_uri_pattern = r"^gs:\/\/(?:[^\/]+)\/(?:.+)$"
+                    match = re.match(gcs_uri_pattern, args.package)
+                    if not match:
+                        raise YBOpsRuntimeError("{} is not a valid gs URI. Must match {}"
+                                                .format(args.package, gcs_uri_pattern))
+
+                    self.extra_vars['gcs_package_path'] = args.package
+                    self.extra_vars['gcs_credentials_json'] = gcs_credentials_json
                     logging.info(
                         "Variables to download {} directly on the remote host added."
                         .format(args.package))
