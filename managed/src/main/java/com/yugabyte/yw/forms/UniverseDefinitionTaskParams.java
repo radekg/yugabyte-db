@@ -17,7 +17,7 @@ import com.yugabyte.yw.cloud.PublicCloudConstants;
 import com.yugabyte.yw.commissioner.Common;
 import com.yugabyte.yw.commissioner.Common.CloudType;
 import com.yugabyte.yw.commissioner.tasks.UniverseDefinitionTaskBase;
-import com.yugabyte.yw.common.YWServiceException;
+import com.yugabyte.yw.common.PlatformServiceException;
 import com.yugabyte.yw.models.Provider;
 import com.yugabyte.yw.models.Region;
 import com.yugabyte.yw.models.helpers.DeviceInfo;
@@ -33,6 +33,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+import io.swagger.annotations.ApiModelProperty;
 import org.apache.commons.lang3.StringUtils;
 import play.data.validation.Constraints;
 
@@ -251,11 +253,11 @@ public class UniverseDefinitionTaskParams extends UniverseTaskParams {
       DeviceInfo deviceInfo = userIntent.deviceInfo;
       if (cloudType.isRequiresDeviceInfo()) {
         if (deviceInfo == null) {
-          throw new YWServiceException(
+          throw new PlatformServiceException(
               BAD_REQUEST, "deviceInfo can't be empty for universe on " + cloudType + " provider");
         }
         if (cloudType == CloudType.onprem && StringUtils.isEmpty(deviceInfo.mountPoints)) {
-          throw new YWServiceException(
+          throw new PlatformServiceException(
               BAD_REQUEST, "Mount points are mandatory for onprem cluster");
         }
         deviceInfo.validate();
@@ -271,19 +273,19 @@ public class UniverseDefinitionTaskParams extends UniverseTaskParams {
       if (cloudType == CloudType.aws && isAwsClusterWithEphemeralStorage()) {
         // Ephemeral storage AWS instances should not have storage type
         if (deviceInfo.storageType != null) {
-          throw new YWServiceException(
+          throw new PlatformServiceException(
               BAD_REQUEST, "AWS instance with ephemeral storage can't have" + " storageType set");
         }
       } else {
         if (cloudType.isRequiresStorageType() && deviceInfo.storageType == null) {
-          throw new YWServiceException(
+          throw new PlatformServiceException(
               BAD_REQUEST, "storageType can't be empty for universe on " + cloudType + " provider");
         }
       }
       PublicCloudConstants.StorageType storageType = deviceInfo.storageType;
       if (storageType != null) {
         if (storageType.getCloudType() != cloudType) {
-          throw new YWServiceException(
+          throw new PlatformServiceException(
               BAD_REQUEST,
               "Cloud type "
                   + cloudType.name()
@@ -343,21 +345,26 @@ public class UniverseDefinitionTaskParams extends UniverseTaskParams {
 
     public DeviceInfo deviceInfo;
 
+    @ApiModelProperty(notes = "default: true")
     public boolean assignPublicIP = true;
 
-    public boolean useTimeSync = false;
+    @ApiModelProperty(value = "Whether to assign static public IP")
+    public boolean assignStaticPublicIP = false;
 
-    public boolean enableYSQL = false;
+    @ApiModelProperty() public boolean useTimeSync = false;
 
+    @ApiModelProperty() public boolean enableYSQL = false;
+
+    @ApiModelProperty(notes = "default: true")
     public boolean enableYEDIS = true;
 
-    public boolean enableNodeToNodeEncrypt = false;
+    @ApiModelProperty() public boolean enableNodeToNodeEncrypt = false;
 
-    public boolean enableClientToNodeEncrypt = false;
+    @ApiModelProperty() public boolean enableClientToNodeEncrypt = false;
 
-    public boolean enableVolumeEncryption = false;
+    @ApiModelProperty() public boolean enableVolumeEncryption = false;
 
-    public boolean enableIPV6 = false;
+    @ApiModelProperty() public boolean enableIPV6 = false;
 
     // Flag to use if we need to deploy a loadbalancer/some kind of
     // exposing service for the cluster.
@@ -366,6 +373,7 @@ public class UniverseDefinitionTaskParams extends UniverseTaskParams {
     // Can eventually be used when we create loadbalancer services for
     // our cluster deployments.
     // Setting at user intent level since it can be unique across types of clusters.
+    @ApiModelProperty(notes = "default: NONE")
     public ExposingServiceState enableExposingService = ExposingServiceState.NONE;
 
     public String awsArnString;
@@ -373,9 +381,9 @@ public class UniverseDefinitionTaskParams extends UniverseTaskParams {
     // When this is set to true, YW will setup the universe to communicate by way of hostnames
     // instead of ip addresses. These hostnames will have been provided during on-prem provider
     // setup and will be in-place of privateIP
-    public boolean useHostname = false;
+    @ApiModelProperty() public boolean useHostname = false;
 
-    public boolean useSystemd = false;
+    @ApiModelProperty() public boolean useSystemd = false;
 
     // Info of all the gflags that the user would like to save to the universe. These will be
     // used during edit universe, for example, to set the flags on new nodes to match
@@ -415,6 +423,8 @@ public class UniverseDefinitionTaskParams extends UniverseTaskParams {
           + useTimeSync
           + ", publicIP="
           + assignPublicIP
+          + ", staticPublicIP="
+          + assignStaticPublicIP
           + ", tags="
           + instanceTags;
     }
@@ -433,9 +443,9 @@ public class UniverseDefinitionTaskParams extends UniverseTaskParams {
       newUserIntent.useSystemd = useSystemd;
       newUserIntent.accessKeyCode = accessKeyCode;
       newUserIntent.assignPublicIP = assignPublicIP;
+      newUserIntent.assignStaticPublicIP = assignStaticPublicIP;
       newUserIntent.masterGFlags = new HashMap<>(masterGFlags);
       newUserIntent.tserverGFlags = new HashMap<>(tserverGFlags);
-      newUserIntent.assignPublicIP = assignPublicIP;
       newUserIntent.useTimeSync = useTimeSync;
       newUserIntent.enableYSQL = enableYSQL;
       newUserIntent.enableYEDIS = enableYEDIS;
@@ -458,6 +468,7 @@ public class UniverseDefinitionTaskParams extends UniverseTaskParams {
           && ybSoftwareVersion.equals(other.ybSoftwareVersion)
           && (accessKeyCode == null || accessKeyCode.equals(other.accessKeyCode))
           && assignPublicIP == other.assignPublicIP
+          && assignStaticPublicIP == other.assignStaticPublicIP
           && useTimeSync == other.useTimeSync
           && useSystemd == other.useSystemd) {
         return true;
@@ -477,6 +488,7 @@ public class UniverseDefinitionTaskParams extends UniverseTaskParams {
           && ybSoftwareVersion.equals(other.ybSoftwareVersion)
           && (accessKeyCode == null || accessKeyCode.equals(other.accessKeyCode))
           && assignPublicIP == other.assignPublicIP
+          && assignStaticPublicIP == other.assignStaticPublicIP
           && useTimeSync == other.useTimeSync) {
         return true;
       }

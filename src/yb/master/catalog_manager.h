@@ -725,6 +725,8 @@ class CatalogManager :
   Result<TableDescription> DescribeTable(
       const TableInfoPtr& table_info, bool succeed_if_create_in_progress);
 
+  Result<std::string> GetPgSchemaName(const TableInfoPtr& table_info);
+
   void AssertLeaderLockAcquiredForReading() const {
     leader_lock_.AssertAcquiredForReading();
   }
@@ -789,7 +791,8 @@ class CatalogManager :
 
   Result<std::vector<TableDescription>> CollectTables(
       const google::protobuf::RepeatedPtrField<TableIdentifierPB>& table_identifiers,
-      CollectFlags flags);
+      CollectFlags flags,
+      std::unordered_set<NamespaceId>* namespaces = nullptr);
 
   // Returns 'table_replication_info' itself if set. Else looks up placement info for its
   // 'tablespace_id'. If neither is set, returns the cluster level replication info.
@@ -1302,6 +1305,10 @@ class CatalogManager :
       SysRowEntry::Type type) {
     return SnapshotSchedulesToObjectIdsMap();
   }
+
+  Status DoDeleteNamespace(const DeleteNamespaceRequestPB* req,
+                           DeleteNamespaceResponsePB* resp,
+                           rpc::RpcContext* rpc);
 
   // TODO: the maps are a little wasteful of RAM, since the TableInfo/TabletInfo
   // objects have a copy of the string key. But STL doesn't make it

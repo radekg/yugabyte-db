@@ -899,6 +899,7 @@ stmt :
 			| AlterRoleStmt
 			| AlterSeqStmt
 			| AlterTableStmt
+			| BackfillIndexStmt
 			| CallStmt
 			| ClosePortalStmt
 			| CommentStmt
@@ -967,7 +968,6 @@ stmt :
 			| AlterForeignTableStmt { parser_ybc_beta_feature(@1, "foreign data wrapper", true); }
 			| AlterUserMappingStmt { parser_ybc_beta_feature(@1, "foreign data wrapper", true); }
 			| AnalyzeStmt { parser_ybc_beta_feature(@1, "analyze", false); }
-			| BackfillIndexStmt { parser_ybc_beta_feature(@1, "backfill index", false); }
 			| CheckPointStmt { parser_ybc_beta_feature(@1, "checkpoint", false); }
 			| CreateFdwStmt { parser_ybc_beta_feature(@1, "foreign data wrapper", true); }
 			| CreateForeignServerStmt { parser_ybc_beta_feature(@1, "foreign data wrapper", true); }

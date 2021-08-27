@@ -349,7 +349,7 @@ struct PersistentTableInfo : public Persistent<SysTablesEntryPB, SysRowEntry::TA
   }
 
   // Return the table's type.
-  const TableType table_type() const {
+  TableType table_type() const {
     return pb.table_type();
   }
 
@@ -863,6 +863,13 @@ void FillInfoEntry(const Info& info, SysRowEntry* entry) {
   entry->set_id(info.id());
   entry->set_type(info.metadata().state().type());
   entry->set_data(info.metadata().state().pb.SerializeAsString());
+}
+
+template <class Info>
+auto AddInfoEntry(Info* info, google::protobuf::RepeatedPtrField<SysRowEntry>* out) {
+  auto lock = info->LockForRead();
+  FillInfoEntry(*info, out->Add());
+  return lock;
 }
 
 }  // namespace master
