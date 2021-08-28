@@ -2,16 +2,20 @@
 -- create FDW objects
 -- ===================================================================
 CREATE EXTENSION postgres_fdw;
+-- YugabyteDB requires the host option because
+-- it binds on a random address
 CREATE SERVER testserver1 FOREIGN DATA WRAPPER postgres_fdw;
 DO $d$
     BEGIN
         EXECUTE $$CREATE SERVER loopback FOREIGN DATA WRAPPER postgres_fdw
             OPTIONS (dbname '$$||current_database()||$$',
-                     port '$$||current_setting('port')||$$'
+                     port '$$||current_setting('port')||$$',
+                     host '$$||current_setting('listen_addresses')||$$'
             )$$;
         EXECUTE $$CREATE SERVER loopback2 FOREIGN DATA WRAPPER postgres_fdw
             OPTIONS (dbname '$$||current_database()||$$',
-                     port '$$||current_setting('port')||$$'
+                     port '$$||current_setting('port')||$$'.
+                     host '$$||current_setting('listen_addresses')||$$'
             )$$;
     END;
 $d$;

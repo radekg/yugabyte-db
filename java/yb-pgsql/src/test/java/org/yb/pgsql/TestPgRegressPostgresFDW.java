@@ -28,6 +28,6 @@ public class TestPgRegressPostgresFDW extends BasePgSQLTest {
 
   @Test
   public void testPgRegressPostgresFDW() throws Exception {
-    runPgRegressTest("yb_pg_postgres_fdw_schedule");
+    runPgRegressTest("yb_extensions_postgres_fdw_schedule");
   }
 }

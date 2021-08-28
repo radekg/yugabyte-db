@@ -1,4 +1,4 @@
-# src/test/regress/yb_pg_postgres_fdw_schedule
+# src/test/regress/yb_extensions_postgres_fdw_schedule
 #
 ####################################################################################################
 # Postgres Testsuites: Porting from PostgreSQL original tests.
