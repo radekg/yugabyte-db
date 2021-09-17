@@ -9618,7 +9618,6 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER FOREIGN TABLE relation_expr RENAME opt_column name TO name
 				{
-					parser_ybc_not_support(@1, "ALTER FOREIGN TABLE");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_COLUMN;
 					n->relationType = OBJECT_FOREIGN_TABLE;
@@ -9630,7 +9629,6 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER FOREIGN TABLE IF_P EXISTS relation_expr RENAME opt_column name TO name
 				{
-					parser_ybc_not_support(@1, "ALTER FOREIGN TABLE");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_COLUMN;
 					n->relationType = OBJECT_FOREIGN_TABLE;
