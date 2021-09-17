@@ -5316,7 +5316,6 @@ generic_option_list:
 alter_generic_options:
 			OPTIONS	'(' alter_generic_option_list ')'
 				{
-					parser_ybc_not_support(@1, "Generic OPTIONS");
 					$$ = $3;
 				}
 		;
